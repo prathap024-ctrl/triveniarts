@@ -112,6 +112,12 @@ export function NavbarSec() {
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">
+          <SignedOut>
+            <SignInButton />
+          </SignedOut>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
           <Link to="/cart">
             <Button
               variant="ghost"
@@ -123,7 +129,7 @@ export function NavbarSec() {
           </Link>
         </div>
 
-        <div className="md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-4">
           <SignedOut>
             <SignInButton />
           </SignedOut>
