@@ -123,7 +123,7 @@ export function NavbarSec() {
           </Link>
         </div>
 
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="md:flex items-center space-x-4">
           <SignedOut>
             <SignInButton />
           </SignedOut>
