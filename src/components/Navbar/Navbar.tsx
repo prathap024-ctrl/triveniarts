@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Menu, X, ShoppingCart, Search } from "lucide-react";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
-import mainlogo from "../../assets/main-logo2.png";
+import images from "@/assets/images";
 import {
   SignInButton,
   SignedIn,
@@ -59,7 +59,7 @@ export function NavbarSec() {
             className="p-6 flex flex-col gap-4 bg-[#521635] text-white"
           >
             <div className="max-w-40">
-              <img src={mainlogo} alt="" />
+              <img src={images.mainlogo2} alt="" />
             </div>
             <div className="mt-4 flex gap-2">
               <SignedOut>
@@ -99,7 +99,7 @@ export function NavbarSec() {
         <div className="max-w-20 lg:max-w-52 font-semibold text-center flex-1">
           <Link to="/">
             {" "}
-            <img src={mainlogo} alt="Triveni Arts" />
+            <img src={images.mainlogo2} alt="Triveni Arts" />
           </Link>
         </div>
         <div className="hidden md:flex items-center space-x-2 relative w-2/4">

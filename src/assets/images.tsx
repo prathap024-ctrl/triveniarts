@@ -8,6 +8,7 @@ import NarayanaSrideviBudevi from './Narayana_Sridevi_Budevi.png';
 import Rajarajeshwari from './rajarajeshwari.png';
 import RamaSet from './Rama_Set.png';
 import TriveniArts from './main-logo.png'
+import triveniarts2 from './main-logo2.png'
 
 export const images = {
     image1: Anantashayana,
@@ -19,7 +20,8 @@ export const images = {
     image7: NarayanaSrideviBudevi,
     image8: Rajarajeshwari,
     image9: RamaSet,
-    mainLogo: TriveniArts
+    mainlogo: TriveniArts,
+    mainlogo2:triveniarts2
 }
 
 export default images;
