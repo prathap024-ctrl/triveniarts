@@ -51,7 +51,7 @@ const features = [
 
 export function FeatureSec() {
   // Sample handler for adding to cart (replace with your actual cart logic)
-  const handleAddToCart = (feature) => {
+  const handleAddToCart = (feature: { id: number; title: string; description: string; route: string; image: string }) => {
     console.log(`${feature.title} added to cart!`);
     // Add your cart logic here (e.g., update state, call an API, etc.)
   };

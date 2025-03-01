@@ -5,6 +5,7 @@ import {
   useAnimation,
   useMotionValue,
   useTransform,
+  AnimationControls,
 } from "framer-motion"
 
 export const useIsomorphicLayoutEffect =
@@ -85,7 +86,7 @@ const Carousel = memo(
     isCarouselActive,
   }: {
     handleClick: (imgUrl: string, index: number) => void
-    controls: any
+    controls: AnimationControls
     cards: string[]
     isCarouselActive: boolean
   }) => {
@@ -166,8 +167,6 @@ const Carousel = memo(
   }
 )
 
-const hiddenMask = `repeating-linear-gradient(to right, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 30px, rgba(0,0,0,1) 30px, rgba(0,0,0,1) 30px)`
-const visibleMask = `repeating-linear-gradient(to right, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 0px, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 30px)`
 function ThreeDPhotoCarousel() {
   const [activeImg, setActiveImg] = useState<string | null>(null)
   const [isCarouselActive, setIsCarouselActive] = useState(true)
