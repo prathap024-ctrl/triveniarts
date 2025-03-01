@@ -146,3 +146,24 @@
   font-style: normal;
   font-size: normal;
 }
+
+
+/* Fade animation */
+.fade {
+  animation: fadeInOut 3s infinite;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
