@@ -1,89 +1,69 @@
 "use strict";
 
-
 import { useState, useEffect } from "react";
 import { FiSearch, FiHeart, FiShoppingCart } from "react-icons/fi";
-import { AiFillStar } from "react-icons/ai";
-import images from "@/assets/images";
+import { FaWhatsapp } from "react-icons/fa";
+import { createClient } from "@supabase/supabase-js";
 
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Supabase URL or Anon Key is missing in environment variables");
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+interface Product {
+  id: number;
+  product_name: string;
+  product_code: string;
+  price: number;
+  stock: number;
+  category: string;
+  image_url: string;
+}
 
 const ProductCollection = () => {
-  const [products] = useState([
-    {
-      id: 1,
-      title: "Idol 1",
-      price: 129.99,
-      rating: 4.5,
-      category: "Brass",
-      stock: 15,
-      image: images.image1,
-      colors: ["Brown", "Black", "Tan"],
-    },
-    {
-      id: 2,
-      title: "idol 2",
-      price: 299.99,
-      rating: 4.8,
-      category: "Collection",
-      stock: 8,
-      image: images.image2,
-      colors: ["Black", "Silver", "White"],
-    },
-    {
-      id: 3,
-      title: "idol 3",
-      price: 34.99,
-      rating: 4.2,
-      category: "Brass",
-      stock: 25,
-      image: images.image3,
-      colors: ["White", "Gray", "Navy"],
-    },
-    {
-      id: 4,
-      title: "idol 4",
-      price: 199.99,
-      rating: 4.6,
-      category: "Collection",
-      stock: 12,
-      image: images.image4,
-      colors: ["Black", "Rose Gold"],
-    },
-    {
-      id: 5,
-      title: "idol 5",
-      price: 49.99,
-      rating: 4.3,
-      category: "Bronze",
-      stock: 20,
-      image: images.image5,
-      colors: ["White", "Black"],
-    },
-    {
-      id: 6,
-      title: "idol 6",
-      price: 39.99,
-      rating: 4.7,
-      category: "Bronze",
-      stock: 30,
-      image: images.image6,
-      colors: ["White", "Black", "Gray"],
-    }
-  ]);
-
-  const [filteredProducts, setFilteredProducts] = useState(products);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [sortOption, setSortOption] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [error] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const categories = ["All", ...new Set(products.map((product) => product.category))];
 
+  // Fetch products from Supabase
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1500);
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("id", { ascending: true });
+
+        if (error) {
+          throw new Error("Failed to fetch products: " + error.message);
+        }
+
+        setProducts(data || []);
+        setFilteredProducts(data || []);
+      } catch (err) {
+        const error = err as Error;
+        setError(error.message || "Failed to fetch products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
   }, []);
 
+  // Handle filtering and sorting
   useEffect(() => {
     let result = [...products];
 
@@ -93,7 +73,7 @@ const ProductCollection = () => {
 
     if (searchQuery) {
       result = result.filter((product) =>
-        product.title.toLowerCase().includes(searchQuery.toLowerCase())
+        product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -105,10 +85,7 @@ const ProductCollection = () => {
         result.sort((a, b) => b.price - a.price);
         break;
       case "name-asc":
-        result.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case "rating":
-        result.sort((a, b) => b.rating - a.rating);
+        result.sort((a, b) => a.product_name.localeCompare(b.product_name));
         break;
       default:
         break;
@@ -116,6 +93,13 @@ const ProductCollection = () => {
 
     setFilteredProducts(result);
   }, [products, sortOption, searchQuery, selectedCategory]);
+
+  // Function to generate WhatsApp link
+  const generateWhatsAppLink = (product: Product) => {
+    const phoneNumber = "+918105871804"; // Replace with your WhatsApp number
+    const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
+    return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  };
 
   if (loading) {
     return (
@@ -152,7 +136,7 @@ const ProductCollection = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="abeezee-regular max-w-7xl mx-auto">
         <div className="mb-8 space-y-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="relative flex-1 max-w-xl">
@@ -186,7 +170,6 @@ const ProductCollection = () => {
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="name-asc">Alphabetical</option>
-                <option value="rating">Rating</option>
               </select>
             </div>
           </div>
@@ -209,12 +192,18 @@ const ProductCollection = () => {
                 className="bg-[#521635] text-white overflow-hidden transition-transform duration-300 hover:scale-105"
               >
                 <div className="relative h-64 overflow-hidden">
-                   {/* <img
-                    src={product.image}
-                    alt={product.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />  */}
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.product_name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500">No Image</span>
+                    </div>
+                  )}
                   <button
                     className="absolute top-4 right-4 p-2 bg-white rounded-full text-[#521635] hover:bg-gray-100 transition-colors"
                     aria-label="Add to wishlist"
@@ -224,37 +213,53 @@ const ProductCollection = () => {
                 </div>
                 <div className="p-4 space-y-3">
                   <h3 className="font-semibold text-lg truncate">
-                    {product.title}
+                    {product.product_name || "Unnamed Product"}
                   </h3>
-                  <div className="flex items-center gap-1">
-                    <AiFillStar className="text-yellow-400" />
-                    <span>{product.rating}</span>
-                  </div>
+                  <p className="text-sm text-gray-300">
+                    Code: {product.product_code || "N/A"}
+                  </p>
                   <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold">${product.price}</span>
+                    {product.price > 10000 ? (
+                      <span className="text-xl font-bold">Contact for Price</span>
+                    ) : (
+                      <span className="text-xl font-bold">
+                        {new Intl.NumberFormat("en-us", {
+                          style: "currency",
+                          currency: "INR",
+                        }).format(product.price || 0)}
+                      </span>
+                    )}
                     <span
-                      className={`text-sm ${product.stock < 10 ? "text-red-300" : "text-green-300"}`}
+                      className={`text-sm ${
+                        product.stock < 10 ? "text-red-300" : "text-green-300"
+                      }`}
                     >
                       {product.stock} in stock
                     </span>
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    {product.colors.map((color) => (
-                      <button
-                        key={color}
-                        className="w-6 h-6 rounded-full border-2 border-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
-                        style={{ backgroundColor: color.toLowerCase() }}
-                        aria-label={`Select ${color} color`}
-                      ></button>
-                    ))}
-                  </div>
-                  <button
-                    className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
-                    aria-label={`Add ${product.title} to cart`}
-                  >
-                    <FiShoppingCart />
-                    Add to Cart
-                  </button>
+                  <p className="text-sm text-gray-300">
+                    Category: {product.category || "Uncategorized"}
+                  </p>
+                  {product.price > 8000 ? (
+                    <a
+                      href={generateWhatsAppLink(product)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                      aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                    >
+                      <FaWhatsapp />
+                      Chat on WhatsApp
+                    </a>
+                  ) : (
+                    <button
+                      className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                      aria-label={`Add ${product.product_name} to cart`}
+                    >
+                      <FiShoppingCart />
+                      Add to Cart
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -5,11 +5,11 @@ import { FaFacebook, FaInstagram } from "react-icons/fa";
 
 function FooterSec() {
   return (
-    <footer className="bg-[#521635] py-8">
+    <footer className="bg-[#521635] abeezee-regular py-8">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center">
           <div className="mb-8 rounded-none bg-primary/10">
-            <img src={images.mainLogo} alt="Triveni Arts" className="w-40" />
+            <img src={images.mainlogo} alt="Triveni Arts" className="w-40" />
           </div>
           <nav className="mb-8 flex flex-wrap justify-center gap-6 text-white">
             <Link
@@ -38,14 +38,18 @@ function FooterSec() {
             </Link>
           </nav>
           <div className="mb-8 flex space-x-4">
-            <Button variant="outline" size="icon" className="rounded-full">
-              <FaFacebook className="h-4 w-4" />
-              <span className="sr-only">Facebook</span>
-            </Button>
-            <Button variant="outline" size="icon" className="rounded-full">
-              <FaInstagram className="h-4 w-4" />
-              <span className="sr-only">Instagram</span>
-            </Button>
+            <Link to="https://www.facebook.com/profile.php?id=61573701290515">
+              <Button variant="outline" size="icon" className="rounded-full">
+                <FaFacebook className="h-4 w-4" />
+                <span className="sr-only">Facebook</span>
+              </Button>
+            </Link>
+            <Link to="https://www.instagram.com/triveni_arts/">
+              <Button variant="outline" size="icon" className="rounded-full">
+                <FaInstagram className="h-4 w-4" />
+                <span className="sr-only">Instagram</span>
+              </Button>
+            </Link>
           </div>
           <div className="text-center">
             <p className="text-sm text-white">

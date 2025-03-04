@@ -147,12 +147,12 @@ export function NavbarSec() {
             </Button>
           </Link>
           <div className="flex space-x-2">
-            <a href="#">
+            <Link to="https://www.facebook.com/profile.php?id=61573701290515">
               <FaFacebook className="w-6 h-6 text-white hover:text-blue-800" />
-            </a>
-            <a href="#">
+            </Link>
+            <Link to="https://www.instagram.com/triveni_arts/">
               <FaInstagram className="w-6 h-6 text-white hover:text-pink-700" />
-            </a>
+            </Link>
           </div>
         </div>
       </div>

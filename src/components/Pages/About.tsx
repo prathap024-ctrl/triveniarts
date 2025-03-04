@@ -4,7 +4,7 @@ import img1 from "@/assets/image1.png";
 export default function About() {
   return (
     <motion.section
-      className="relative min-h-screen w-full overflow-hidden flex items-center justify-center p-4 md:p-8"
+      className="abeezee-regular relative min-h-screen w-full overflow-hidden flex items-center justify-center p-4 md:p-8"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}

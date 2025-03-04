@@ -8,90 +8,29 @@ import Blogs from "./components/Pages/Blogs";
 import Gallery from "./components/Pages/Gallery";
 import ContactPage from "./components/Pages/Contact";
 import ProductCollection from "./components/Pages/ProductCollection";
-import Dashboard from "./admin-layout/Dashboard/dashboard";
-import { AdminLayout } from "./AdminLayout";
-import { MainLayout } from "./MainLayout";
+import { FooterSec } from "./components/Footer/FooterSec";
+import NavbarSec from "./components/Navbar/Navbar";
+import ShoppingCart from "./components/Pages/ShoppingCart";
+
+
 
 function App() {
   return (
     <Router>
+      <NavbarSec />
       <Routes>
-        <Route
-          path="/admin"
-          element={
-            <AdminLayout>
-              {" "}
-              <Dashboard />
-            </AdminLayout>
-          }
-        />
         {/* Public Routes */}
-        <Route
-          path="/"
-          element={
-            <MainLayout>
-              <Home />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/shop-all"
-          element={
-            <MainLayout>
-              <ShopAll />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <MainLayout>
-              <About />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/blogs"
-          element={
-            <MainLayout>
-              <Blogs />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/gallery"
-          element={
-            <MainLayout>
-              <Gallery />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/contact"
-          element={
-            <MainLayout>
-              <ContactPage />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/products"
-          element={
-            <MainLayout>
-              <ProductCollection />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/error"
-          element={
-            <MainLayout>
-              <NotFound />
-            </MainLayout>
-          }
-        />{" "}
-        {/* Catch-all route */}
+        <Route path="/" element={<Home />} />
+        <Route path="/shop-all" element={<ShopAll />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/blogs" element={<Blogs />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/products" element={<ProductCollection />} />
+        <Route path="/cart" element={<ShoppingCart /> }/>
+        <Route path="/error" element={<NotFound />} /> {/* Catch-all route */}
       </Routes>
+      <FooterSec />
     </Router>
   );
 }

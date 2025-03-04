@@ -4,7 +4,7 @@
 const Contact = () => {
   return (
     <div className="p-10">
-      <div className="grid md:grid-cols-3 items-start gap-4 max-md:gap-12 max-w-6xl mx-auto py-6 bg-white font-[sans-serif]">
+      <div className="abeezee-regular grid md:grid-cols-3 items-start gap-4 max-md:gap-12 max-w-6xl mx-auto py-6 bg-white font-[sans-serif]">
         <div className="px-4">
           <h2 className="text-gray-800 text-xl font-semibold">
             Contact Information
