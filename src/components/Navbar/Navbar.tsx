@@ -1,11 +1,11 @@
 "use strict";
 
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { Menu, X, ShoppingCart, Search } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
 import images from "@/assets/images";
 import {
@@ -15,10 +15,16 @@ import {
   UserButton,
 } from "@clerk/clerk-react";
 import "../../index.css";
+import { useToast } from "@/hooks/use-toast";
+import { signOut } from "firebase/auth";
+import { auth } from "@/Firebase/firebase";
+import CartIconWithCount from "../others/CartIconWithCount";
 
 export function NavbarSec() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,10 +38,27 @@ export function NavbarSec() {
     { name: "Home", path: "/" },
     { name: "Shop All", path: "/shop-all" },
     { name: "About", path: "/about" },
-    { name: "Blogs", path: "/blogs" },
     { name: "Gallery", path: "/gallery" },
     { name: "Contact", path: "/contact" },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Success",
+        description: "Logged out successfully!",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to log out",
+      });
+    }
+  };
 
   return (
     <nav className=" w-full bg-[#521635] shadow-md py-4 px-6 flex flex-col items-center text-white sticky top-0 z-40">
@@ -69,15 +92,7 @@ export function NavbarSec() {
                 <UserButton />
               </SignedIn>
 
-              <Link to="/cart">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white rounded-none"
-                >
-                  <ShoppingCart className="w-6 h-6" />
-                </Button>
-              </Link>
+              <CartIconWithCount />
             </div>
 
             {navItems.map((item) => (
@@ -118,34 +133,23 @@ export function NavbarSec() {
           <SignedIn>
             <UserButton />
           </SignedIn>
-          <Link to="/cart">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white rounded-none "
-            >
-              <ShoppingCart className="w-6 h-6" />
-            </Button>
-          </Link>
+          <CartIconWithCount />
         </div>
 
         <div className="hidden md:flex items-center space-x-4">
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
-
-          <Link to="/cart">
+          <div>
+            <Link to="/login">
+              <Button>Login</Button>
+            </Link>
             <Button
-              variant="ghost"
-              size="icon"
-              className="text-white rounded-none"
+              onClick={handleLogout}
+              className="bg-[#521635] rounded-none hover:underline underline-offset-4 mr-4"
             >
-              <ShoppingCart className="w-6 h-6 " />
+              Logout
             </Button>
-          </Link>
+          </div>
+
+          <CartIconWithCount />
           <div className="flex space-x-2">
             <Link to="https://www.facebook.com/profile.php?id=61573701290515">
               <FaFacebook className="w-6 h-6 text-white hover:text-blue-800" />

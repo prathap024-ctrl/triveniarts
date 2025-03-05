@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { FiSearch, FiHeart, FiShoppingCart } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { createClient } from "@supabase/supabase-js";
+import { useCart } from "../cartutils/CartContext"; // Import the useCart hook
+import { useToast } from "@/hooks/use-toast"; // Import the useToast hook from shadcn/ui
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -33,6 +35,8 @@ const ProductCollection = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { addToCart } = useCart(); // Use the cart context
+  const { toast } = useToast(); // Use the toast hook from shadcn/ui
 
   const categories = ["All", ...new Set(products.map((product) => product.category))];
 
@@ -99,6 +103,23 @@ const ProductCollection = () => {
     const phoneNumber = "+918105871804"; // Replace with your WhatsApp number
     const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  };
+
+  // Function to handle adding to cart with toast
+  const handleAddToCart = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.product_name,
+      price: product.price,
+      image: product.image_url || "/api/placeholder/400/300",
+      quantity: 1,
+    });
+    toast({
+      title: "Added to Cart",
+      description: `${product.product_name} has been added to your cart.`,
+      duration: 3000, // Toast disappears after 3 seconds
+      className:"text-[#521635]"
+    });
   };
 
   if (loading) {
@@ -253,6 +274,7 @@ const ProductCollection = () => {
                     </a>
                   ) : (
                     <button
+                      onClick={() => handleAddToCart(product)} // Use the new handler
                       className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
                       aria-label={`Add ${product.product_name} to cart`}
                     >
