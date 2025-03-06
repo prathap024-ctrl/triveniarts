@@ -76,7 +76,7 @@ const ProductCollection = () => {
         result.sort((a, b) => a.price - b.price);
         break;
       case "price-desc":
-        result.sort((a, b) => b.price - b.price);
+        result.sort((a, b) => a.price - b.price);
         break;
       case "name-asc":
         result.sort((a, b) => a.product_name.localeCompare(b.product_name));

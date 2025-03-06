@@ -10,7 +10,6 @@ import { FaFacebook, FaInstagram } from "react-icons/fa";
 import images from "@/assets/images";
 import "../../index.css";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/Firebase/firebase";
 import CartIconWithCount from "../others/CartIconWithCount";
 import { useAuth } from "@/Supabase/authcontext";
 
@@ -39,7 +38,7 @@ export function NavbarSec() {
 
   const handleLogout = async () => {
     try {
-      await logout(auth);
+      await logout(); 
       toast({
         title: "Success",
         description: "Logged out successfully!",
