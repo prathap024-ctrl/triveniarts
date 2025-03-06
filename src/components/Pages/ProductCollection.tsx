@@ -3,19 +3,12 @@
 import { useState, useEffect } from "react";
 import { FiSearch, FiHeart, FiShoppingCart } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-import { createClient } from "@supabase/supabase-js";
-import { useCart } from "../cartutils/CartContext"; // Import the useCart hook
-import { useToast } from "@/hooks/use-toast"; // Import the useToast hook from shadcn/ui
+import { useCart } from "../cartutils/CartContext";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import supabase from "@/Supabase/supabase";
+import { Button } from "../ui/button";
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase URL or Anon Key is missing in environment variables");
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Product {
   id: number;
@@ -35,12 +28,12 @@ const ProductCollection = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { addToCart } = useCart(); // Use the cart context
-  const { toast } = useToast(); // Use the toast hook from shadcn/ui
+  const { addToCart } = useCart();
+  const { toast } = useToast();
+  const navigate = useNavigate(); // Hook for navigation
 
   const categories = ["All", ...new Set(products.map((product) => product.category))];
 
-  // Fetch products from Supabase
   useEffect(() => {
     const loadProducts = async () => {
       try {
@@ -50,9 +43,7 @@ const ProductCollection = () => {
           .select("*")
           .order("id", { ascending: true });
 
-        if (error) {
-          throw new Error("Failed to fetch products: " + error.message);
-        }
+        if (error) throw new Error("Failed to fetch products: " + error.message);
 
         setProducts(data || []);
         setFilteredProducts(data || []);
@@ -67,7 +58,6 @@ const ProductCollection = () => {
     loadProducts();
   }, []);
 
-  // Handle filtering and sorting
   useEffect(() => {
     let result = [...products];
 
@@ -86,7 +76,7 @@ const ProductCollection = () => {
         result.sort((a, b) => a.price - b.price);
         break;
       case "price-desc":
-        result.sort((a, b) => b.price - a.price);
+        result.sort((a, b) => b.price - b.price);
         break;
       case "name-asc":
         result.sort((a, b) => a.product_name.localeCompare(b.product_name));
@@ -98,14 +88,12 @@ const ProductCollection = () => {
     setFilteredProducts(result);
   }, [products, sortOption, searchQuery, selectedCategory]);
 
-  // Function to generate WhatsApp link
   const generateWhatsAppLink = (product: Product) => {
-    const phoneNumber = "+918105871804"; // Replace with your WhatsApp number
+    const phoneNumber = "+918105871804";
     const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
   };
 
-  // Function to handle adding to cart with toast
   const handleAddToCart = (product: Product) => {
     addToCart({
       id: product.id,
@@ -117,9 +105,14 @@ const ProductCollection = () => {
     toast({
       title: "Added to Cart",
       description: `${product.product_name} has been added to your cart.`,
-      duration: 3000, // Toast disappears after 3 seconds
-      className:"text-[#521635]"
+      duration: 3000,
+      className: "text-[#521635]",
     });
+  };
+
+  // Navigate to ProductHighlight page
+  const handleProductClick = (productId: number) => {
+    navigate(`/product/${productId}`);
   };
 
   if (loading) {
@@ -206,11 +199,12 @@ const ProductCollection = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-[#521635] text-white overflow-hidden transition-transform duration-300 hover:scale-105"
+                className="bg-[#521635] text-white overflow-hidden transition-transform duration-300 hover:scale-105 cursor-pointer"
+                onClick={() => handleProductClick(product.id)} // Navigate on click
               >
                 <div className="relative h-64 overflow-hidden">
                   {product.image_url ? (
@@ -228,6 +222,7 @@ const ProductCollection = () => {
                   <button
                     className="absolute top-4 right-4 p-2 bg-white rounded-full text-[#521635] hover:bg-gray-100 transition-colors"
                     aria-label="Add to wishlist"
+                    onClick={(e) => e.stopPropagation()} // Prevent navigation on wishlist click
                   >
                     <FiHeart />
                   </button>
@@ -268,19 +263,23 @@ const ProductCollection = () => {
                       rel="noopener noreferrer"
                       className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
                       aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                      onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
                     >
                       <FaWhatsapp />
                       Chat on WhatsApp
                     </a>
                   ) : (
-                    <button
-                      onClick={() => handleAddToCart(product)} // Use the new handler
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent navigation on add to cart
+                        handleAddToCart(product);
+                      }}
                       className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
                       aria-label={`Add ${product.product_name} to cart`}
                     >
                       <FiShoppingCart />
                       Add to Cart
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

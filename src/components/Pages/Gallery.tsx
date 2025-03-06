@@ -1,20 +1,10 @@
 // components/ImageGallery.tsx
 "use client";
 
+import supabase from "@/Supabase/supabase";
 import React, { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Supabase URL or Anon Key is missing in environment variables"
-  );
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Types (adapted from your Product interface)
 interface GalleryImage {

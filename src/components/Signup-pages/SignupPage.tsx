@@ -1,198 +1,237 @@
-'use client';
+"use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { FirebaseError } from 'firebase/app';
-import { auth } from "@/Firebase/firebase";
-// Import Toast components from shadcn
+import Image from "next/image";
+import { Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router";
+import { useAuth } from "@/Supabase/authcontext"; // Adjust path to your AuthContext file
+import supabase from "@/Supabase/supabase";
 
-export default function SignupPage() {
+export function SignupPage() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [username, setUsername] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const router = useNavigate();
-  const { toast } = useToast(); // Initialize toast hook
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { signup } = useAuth(); // Use the signup function from AuthContext
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check if passwords match
-    if (password !== confirmPassword) {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (password !== passwordConfirmation) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Passwords don't match",
+        description: "Passwords do not match",
       });
       return;
     }
 
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      await updateProfile(userCredential.user, {
-        displayName: username
-      });
+    setLoading(true);
 
-      console.log("User signed up successfully:", userCredential.user);
-      
-      // Optional: Show success toast
+    try {
+      // Use signup from AuthContext
+      const { user } = await signup(email, password, `${firstName} ${lastName}`, phone);
+
+      const userId = user?.id;
+
+      if (!userId) throw new Error("User ID not found after signup");
+
+      // If an image is provided, upload it to Supabase Storage
+      if (image) {
+        const fileExt = image.name.split(".").pop();
+        const fileName = `${userId}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("profile-images")
+          .upload(fileName, image);
+
+        if (uploadError) throw uploadError;
+
+        // Get the public URL of the uploaded image
+        const { data: urlData } = supabase.storage
+          .from("profile-images")
+          .getPublicUrl(fileName);
+
+        // Update user metadata with the image URL
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { profile_image: urlData.publicUrl },
+        });
+
+        if (updateError) throw updateError;
+      }
+
       toast({
         title: "Success",
-        description: "Account created successfully!",
+        description: "Account created! Please check your email to confirm.",
       });
-      
-      router('/');
+      router("/");
     } catch (error) {
-      const firebaseError = error as FirebaseError;
-      console.error("Signup error:", firebaseError);
-      console.error("Signup error:", error);
-      
-      // Handle specific Firebase errors with toast
-      switch (firebaseError.code) {
-        case 'auth/email-already-in-use':
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "This email is already in use",
-          });
-          break;
-        case 'auth/invalid-email':
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Invalid email format",
-          });
-          break;
-        case 'auth/weak-password':
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Password should be at least 6 characters",
-          });
-          break;
-        default:
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "An error occurred during signup",
-          });
-      }
+      const errorMessage =
+        error instanceof Error ? error.message : "An error occurred during signup";
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-auto flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{" "}
-            <span 
-              className="font-medium text-[#521635] cursor-pointer hover:underline underline-offset-4"
-              onClick={() => router('/login')}
-            >
-              Sign in
-            </span>
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            <div>
-              <Label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </Label>
-              <div className="mt-1">
+    <div>
+      <Card className="z-50 mx-auto rounded-none max-w-md abeezee-regular text-[#521635]">
+        <CardHeader>
+          <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            Enter your information to create an account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="first-name">First name</Label>
                 <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
+                  id="first-name"
+                  placeholder="first name"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full"
-                  placeholder="Choose a username"
+                  onChange={(e) => setFirstName(e.target.value)}
+                  value={firstName}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="last-name">Last name</Label>
+                <Input
+                  id="last-name"
+                  placeholder="last name"
+                  required
+                  onChange={(e) => setLastName(e.target.value)}
+                  value={lastName}
                 />
               </div>
             </div>
-
-            <div>
-              <Label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </Label>
-              <div className="mt-1">
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full"
-                  placeholder="Enter your email"
-                />
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                onChange={(e) => setEmail(e.target.value)}
+                value={email}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+91 9876543210"
+                required
+                onChange={(e) => setPhone(e.target.value)}
+                value={phone}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="Password"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Confirm Password</Label>
+              <Input
+                id="password_confirmation"
+                type="password"
+                value={passwordConfirmation}
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                autoComplete="new-password"
+                placeholder="Confirm Password"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="image">Profile Image (optional)</Label>
+              <div className="flex items-end gap-4">
+                {imagePreview && (
+                  <div className="relative w-16 h-16 rounded-sm overflow-hidden">
+                    <Image
+                      src={imagePreview}
+                      alt="Profile preview"
+                      layout="fill"
+                      objectFit="cover"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2 w-full">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full"
+                  />
+                  {imagePreview && (
+                    <X
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setImage(null);
+                        setImagePreview(null);
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-
-            <div>
-              <Label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </Label>
-              <div className="mt-1">
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full"
-                  placeholder="Create a password"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </Label>
-              <div className="mt-1">
-                <Input
-                  id="confirm-password"
-                  name="confirm-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full"
-                  placeholder="Confirm your password"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
             <Button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 bg-[#521635] rounded-none hover:underline underline-offset-4"
+              className="w-full rounded-none bg-[#521635] hover:underline underline-offset-4"
+              disabled={loading}
+              onClick={handleSignup}
             >
-              Sign up
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                "Create an account"
+              )}
             </Button>
           </div>
-        </form>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+export default SignupPage;

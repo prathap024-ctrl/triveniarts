@@ -1,60 +1,86 @@
-import images from "@/assets/images";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useCart } from "../cartutils/CartContext";
+import { useToast } from "@/hooks/use-toast";
+import supabase from "@/Supabase/supabase";
+import { FiShoppingCart } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
 
-// Sample features data (you can modify this based on your needs)
-const features = [
-  {
-    id: 1,
-    title: "Pay supplier invoices",
-    description: "Streamline SMB trade, making it easier and faster than ever.",
-    route: "/features/pay-supplier-invoices",
-    image: images.image1,
-  },
-  {
-    id: 2,
-    title: "Track expenses",
-    description: "Monitor and manage your expenses with intuitive tools.",
-    route: "/features/track-expenses",
-    image: images.image2,
-  },
-  {
-    id: 3,
-    title: "Generate reports",
-    description: "Create detailed financial reports in just a few clicks.",
-    route: "/features/generate-reports",
-    image: images.image3,
-  },
-  {
-    id: 4,
-    title: "Manage inventory",
-    description: "Keep track of your stock levels with real-time updates.",
-    route: "/features/manage-inventory",
-    image: images.image4,
-  },
-  {
-    id: 5,
-    title: "Process payments",
-    description: "Accept payments securely from multiple channels.",
-    route: "/features/process-payments",
-    image: images.image5,
-  },
-  {
-    id: 6,
-    title: "Integrate apps",
-    description: "Connect with your favorite tools seamlessly.",
-    route: "/features/integrate-apps",
-    image: images.image6,
-  },
-];
+// Define product interface matching your Supabase schema
+interface Product {
+  id: number;
+  product_name: string;
+  product_code: string;
+  description?: string; // Optional field
+  price: number;
+  stock: number;
+  category: string;
+  image_url: string;
+}
 
 export function FeatureSec() {
-  // Sample handler for adding to cart (replace with your actual cart logic)
-  const handleAddToCart = (feature: { id: number; title: string; description: string; route: string; image: string }) => {
-    console.log(`${feature.title} added to cart!`);
-    // Add your cart logic here (e.g., update state, call an API, etc.)
+  const { addToCart } = useCart();
+  const { toast } = useToast();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch the 6 most recently added products from Supabase
+  useEffect(() => {
+    const fetchRecentProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("id", { ascending: false }) // Assuming higher ID means more recent
+          .limit(6); // Fetch only 6 products
+
+        if (error)
+          throw new Error("Failed to fetch products: " + error.message);
+
+        setProducts(
+          data.map((product: Product) => ({
+            ...product,
+            description: product.description || "No description available.",
+          }))
+        );
+      } catch (err) {
+        const error = err as Error;
+        console.error(error.message);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecentProducts();
+  }, []);
+
+  // Handler for adding to cart
+  const handleAddToCart = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.product_name,
+      price: product.price,
+      image: product.image_url || "/api/placeholder/400/300",
+      quantity: 1,
+    });
+    toast({
+      title: "Added to Cart",
+      description: `${product.product_name} has been added to your cart.`,
+      duration: 3000,
+      className: "text-[#521635]",
+    });
   };
+
+  const generateWhatsAppLink = (product: Product) => {
+    const phoneNumber = "+918105871804";
+    const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
+    return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  };
+
 
   return (
     <div className="abeezee-regular w-full py-12 md:py-20 lg:py-32 xl:py-40">
@@ -63,56 +89,105 @@ export function FeatureSec() {
           {/* Header Section */}
           <div className="flex gap-4 flex-col items-start">
             <div>
-              <Badge variant="secondary">Platform</Badge>
+              <Badge variant="secondary">New Arrivals</Badge>
             </div>
             <div className="flex gap-3 flex-col">
               <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tighter font-semibold text-left">
-                Something new!
+                Recently Added Products
               </h2>
               <p className="text-base sm:text-lg md:max-w-xl lg:max-w-2xl leading-relaxed tracking-tight text-muted-foreground text-left">
-                Managing a small business today is already tough. Our platform helps you simplify processes and save time.
+                Check out our latest additions to the collection, fresh and
+                ready for you!
               </p>
             </div>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
-            {features.map((feature) => (
-              <div
-                key={feature.id}
-                className="flex flex-col gap-3 p-4 rounded-lg hover:bg-muted/50 transition-all duration-300 group h-full min-h-[400px]" // Added min height for consistency
-              >
-                {/* Link wraps the image and title for navigation */}
-                <Link to={feature.route} className="flex flex-col flex-1">
-                  {/* Image Container */}
-                  <div className="rounded-none aspect-square mb-2 overflow-hidden">
-                    <img
-                      src={feature.image}
-                      alt={feature.title}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  {/* Feature Info */}
-                  <div className="flex flex-col flex-1">
-                    <h3 className="text-lg sm:text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground leading-relaxed flex-1">
-                      {feature.description}
-                    </p>
-                  </div>
-                </Link>
-                {/* Add to Cart Button */}
-                <Button
-                  variant="ghost"
-                  className="mt-2 w-full bg-[#521635] hover:bg-white rounded-none text-white hover:text-[#521635] hover:border-2 hover:border-[#521635]"
-                  onClick={() => handleAddToCart(feature)}
+          {/* Products Grid */}
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+              {[...Array(6)].map((_, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 animate-pulse h-[400px]"
                 >
-                  Add to Cart
-                </Button>
-              </div>
-            ))}
-          </div>
+                  <div className="rounded-none aspect-square mb-2 bg-gray-300"></div>
+                  <div className="h-6 bg-gray-300 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-300 rounded w-full"></div>
+                  <div className="h-10 bg-gray-300 rounded mt-auto"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex flex-col gap-3 p-4 rounded-lg hover:bg-muted/50 transition-all duration-300 group h-full min-h-[400px]"
+                >
+                  {/* Link to ProductHighlight page */}
+                  <Link
+                    to={`/product/${product.id}`}
+                    className="flex flex-col flex-1"
+                  >
+                    {/* Image Container */}
+                    <div className="rounded-none aspect-square mb-2 overflow-hidden">
+                      <img
+                        src={product.image_url || "/api/placeholder/400/400"}
+                        alt={product.product_name}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    {/* Product Info */}
+                    <div className="flex flex-col flex-1">
+                      <h3 className="text-lg sm:text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
+                        {product.product_name}
+                      </h3>
+                      <p className="text-sm sm:text-base text-muted-foreground leading-relaxed flex-1">
+                        {product.category}
+                      </p>
+                      <p
+                        className="text-xl font-bold mt-2"
+                        style={{ color: "#521635" }}
+                      >
+                        {product.price > 10000
+                          ? "Contact for Price"
+                          : new Intl.NumberFormat("en-us", {
+                              style: "currency",
+                              currency: "INR",
+                            }).format(product.price)}
+                      </p>
+                    </div>
+                  </Link>
+                  {/* Add to Cart Button */}
+                  {product.price > 8000 ? (
+                    <a
+                      href={generateWhatsAppLink(product)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 bg-[#521635] text-white rounded-none hover:underline underline-offset-4 transition-colors flex items-center justify-center gap-2"
+                      aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                      onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
+                    >
+                      <FaWhatsapp />
+                      WhatsApp
+                    </a>
+                  ) : (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent navigation on add to cart
+                        handleAddToCart(product);
+                      }}
+                      className="w-full py-2 bg-[#521635] text-white rounded-none hover:underline underline-offset-4 transition-colors flex items-center justify-center gap-2"
+                      aria-label={`Add ${product.product_name} to cart`}
+                    >
+                      <FiShoppingCart />
+                      Add to Cart
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

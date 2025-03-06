@@ -8,23 +8,18 @@ import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Menu, X, Search } from "lucide-react";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
 import images from "@/assets/images";
-import {
-  SignInButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/clerk-react";
 import "../../index.css";
 import { useToast } from "@/hooks/use-toast";
-import { signOut } from "firebase/auth";
 import { auth } from "@/Firebase/firebase";
 import CartIconWithCount from "../others/CartIconWithCount";
+import { useAuth } from "@/Supabase/authcontext";
 
 export function NavbarSec() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -44,7 +39,7 @@ export function NavbarSec() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logout(auth);
       toast({
         title: "Success",
         description: "Logged out successfully!",
@@ -85,12 +80,25 @@ export function NavbarSec() {
               <img src={images.mainlogo2} alt="" />
             </div>
             <div className="mt-4 flex gap-2">
-              <SignedOut>
-                <SignInButton />
-              </SignedOut>
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
+              {user ? (
+                <>
+                  <Link to="/profile">
+                    <Button>Profile</Button>
+                  </Link>
+                  <Button onClick={handleLogout}>Logout</Button>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Link to="/login">
+                      <Button>Login</Button>
+                    </Link>{" "}
+                    <Link to="/sign-up">
+                      <Button>Sign in</Button>
+                    </Link>
+                  </div>
+                </>
+              )}
 
               <CartIconWithCount />
             </div>
@@ -127,26 +135,49 @@ export function NavbarSec() {
           </div>
         </div>
         <div className="flex items-center space-x-4 md:hidden">
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
-          <CartIconWithCount />
+          {user ? (
+            <>
+              <Link to="/profile">
+                <Button>Profile</Button>
+              </Link>
+              <Button onClick={handleLogout}>Logout</Button>
+            </>
+          ) : (
+            <>
+              <div>
+                <Link to="/login">
+                  <Button>Login</Button>
+                </Link>{" "}
+                <Link to="/sign-up">
+                  <Button>Sign in</Button>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="hidden md:flex items-center space-x-4">
           <div>
-            <Link to="/login">
-              <Button>Login</Button>
-            </Link>
-            <Button
-              onClick={handleLogout}
-              className="bg-[#521635] rounded-none hover:underline underline-offset-4 mr-4"
-            >
-              Logout
-            </Button>
+            {user ? (
+              <>
+                <Link to="/profile">
+                  <Button>Profile</Button>
+                </Link>
+                {" "}
+                <Button onClick={handleLogout}>Logout</Button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Link to="/login">
+                    <Button>Login</Button>
+                  </Link>{" "}
+                  <Link to="/sign-up">
+                    <Button>Sign in</Button>
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
 
           <CartIconWithCount />
