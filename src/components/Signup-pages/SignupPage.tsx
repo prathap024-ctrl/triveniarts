@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import Image from "next/image";
-import { Loader2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, X, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router";
-import { useAuth } from "@/Supabase/authcontext"; // Adjust path to your AuthContext file
+import { useAuth } from "@/Supabase/authcontext";
 import supabase from "@/Supabase/supabase";
+import { Progress } from "@/components/ui/progress";
 
 export function SignupPage() {
   const [firstName, setFirstName] = useState("");
@@ -27,10 +27,40 @@ export function SignupPage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const router = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { toast } = useToast();
-  const { signup } = useAuth(); // Use the signup function from AuthContext
+  const router = useNavigate();
+  const { user, signup, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      router("/");
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    const calculateStrength = (pwd: string) => {
+      let score = 0;
+      if (pwd.length >= 8) score += 25;
+      if (/[A-Za-z]/.test(pwd)) score += 25;
+      if (/\d/.test(pwd)) score += 25;
+      if (/[!@#$%^&*+=-_]/.test(pwd)) score += 25;
+      return score;
+    };
+    setPasswordStrength(calculateStrength(password));
+  }, [password]);
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 size={32} className="animate-spin" />
+      </div>
+    );
+  }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,27 +74,52 @@ export function SignupPage() {
     }
   };
 
-  const handleSignup = async () => {
-    if (password !== passwordConfirmation) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Passwords do not match",
-      });
-      return;
+  const resetForm = () => {
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setPassword("");
+    setPasswordConfirmation("");
+    setImage(null);
+    setImagePreview(null);
+    setPasswordStrength(0);
+    setErrors({});
+  };
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+\d{1,3}\s\d{6,14}$/;
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+=-_])[A-Za-z\d!@#$%^&*+=-_]{8,}$/;
+
+    if (!firstName) newErrors.firstName = "First name is required";
+    if (!lastName) newErrors.lastName = "Last name is required";
+    if (!emailRegex.test(email)) newErrors.email = "Invalid email format";
+    if (!phoneRegex.test(phone)) newErrors.phone = "Invalid phone number (e.g., +91 9876543210)";
+    if (!passwordRegex.test(password)) {
+      newErrors.password = "Password must be at least 8 characters with a letter, a number, and a special character";
     }
+    if (password !== passwordConfirmation) {
+      newErrors.passwordConfirmation = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSignup = async () => {
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      // Use signup from AuthContext
-      const { user } = await signup(email, password, `${firstName} ${lastName}`, phone);
+      const signupData = await signup(email, password, `${firstName} ${lastName}`, phone);
+      console.log("Signup data:", signupData);
 
-      const userId = user?.id;
-
+      const userId = signupData.user?.id;
       if (!userId) throw new Error("User ID not found after signup");
 
-      // If an image is provided, upload it to Supabase Storage
       if (image) {
         const fileExt = image.name.split(".").pop();
         const fileName = `${userId}.${fileExt}`;
@@ -74,12 +129,10 @@ export function SignupPage() {
 
         if (uploadError) throw uploadError;
 
-        // Get the public URL of the uploaded image
         const { data: urlData } = supabase.storage
           .from("profile-images")
           .getPublicUrl(fileName);
 
-        // Update user metadata with the image URL
         const { error: updateError } = await supabase.auth.updateUser({
           data: { profile_image: urlData.publicUrl },
         });
@@ -89,25 +142,27 @@ export function SignupPage() {
 
       toast({
         title: "Success",
-        description: "Account created! Please check your email to confirm.",
+        description: "Account created successfully!",
       });
+      resetForm();
       router("/");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An error occurred during signup";
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: errorMessage,
-      });
+      let errorMessage = "An error occurred during signup";
+      if (error instanceof Error) {
+        errorMessage = error.message.includes("User already registered")
+          ? "An account with this email already exists."
+          : error.message;
+      }
+      console.error("Signup error:", error);
+      toast({ variant: "destructive", title: "Error", description: errorMessage });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <Card className="z-50 mx-auto rounded-none max-w-md abeezee-regular text-[#521635]">
+    <div className="lg:p-20">
+      <Card className="z-50 mx-auto rounded-none max-w-md abeezee-regular text-[#521635] shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
           <CardDescription className="text-xs md:text-sm">
@@ -126,6 +181,7 @@ export function SignupPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   value={firstName}
                 />
+                {errors.firstName && <span className="text-xs text-red-500">{errors.firstName}</span>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last name</Label>
@@ -136,6 +192,7 @@ export function SignupPage() {
                   onChange={(e) => setLastName(e.target.value)}
                   value={lastName}
                 />
+                {errors.lastName && <span className="text-xs text-red-500">{errors.lastName}</span>}
               </div>
             </div>
             <div className="grid gap-2">
@@ -148,6 +205,7 @@ export function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 value={email}
               />
+              {errors.email && <span className="text-xs text-red-500">{errors.email}</span>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Phone Number</Label>
@@ -159,40 +217,66 @@ export function SignupPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 value={phone}
               />
+              {errors.phone && <span className="text-xs text-red-500">{errors.phone}</span>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                placeholder="Password"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Password (e.g., Pass123!)"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#521635]"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {password && (
+                <div className="flex items-center gap-2">
+                  <Progress value={passwordStrength} className="w-full" />
+                  <span className="text-xs">
+                    {passwordStrength <= 25 ? "Weak" : passwordStrength <= 50 ? "Fair" : passwordStrength <= 75 ? "Good" : "Strong"}
+                  </span>
+                </div>
+              )}
+              {errors.password && <span className="text-xs text-red-500">{errors.password}</span>}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Confirm Password</Label>
-              <Input
-                id="password_confirmation"
-                type="password"
-                value={passwordConfirmation}
-                onChange={(e) => setPasswordConfirmation(e.target.value)}
-                autoComplete="new-password"
-                placeholder="Confirm Password"
-              />
+              <Label htmlFor="password_confirmation">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="password_confirmation"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwordConfirmation}
+                  onChange={(e) => setPasswordConfirmation(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Confirm Password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#521635]"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.passwordConfirmation && (
+                <span className="text-xs text-red-500">{errors.passwordConfirmation}</span>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="image">Profile Image (optional)</Label>
               <div className="flex items-end gap-4">
                 {imagePreview && (
                   <div className="relative w-16 h-16 rounded-sm overflow-hidden">
-                    <Image
-                      src={imagePreview}
-                      alt="Profile preview"
-                      layout="fill"
-                      objectFit="cover"
-                    />
+                    <img src={imagePreview} alt="Profile preview" className="fill object-cover" />
                   </div>
                 )}
                 <div className="flex items-center gap-2 w-full">
@@ -221,11 +305,7 @@ export function SignupPage() {
               disabled={loading}
               onClick={handleSignup}
             >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                "Create an account"
-              )}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : "Create an account"}
             </Button>
           </div>
         </CardContent>

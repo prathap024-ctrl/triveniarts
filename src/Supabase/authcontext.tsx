@@ -1,21 +1,20 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import supabase from './supabase';
+import { User, Session } from '@supabase/supabase-js';
 
-// Define types
 interface AuthContextType {
-  user: any; // Replace with a specific user type if available
+  user: User | null;
   loading: boolean;
   signup: (
     email: string,
     password: string,
     name: string,
-    phone: string // Add phone parameter
-  ) => Promise<any>;
-  login: (email: string, password: string) => Promise<any>;
+    phone: string
+  ) => Promise<{ user: User | null; session: Session | null }>;
+  login: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   logout: () => Promise<void>;
 }
 
-// Create context with default value
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
@@ -23,11 +22,10 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<any>(null); // Replace 'any' with proper user type if available
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check active session
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
@@ -36,7 +34,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     getSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -52,11 +49,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       options: {
         data: {
           full_name: name,
-          phone, // Add phone to user metadata
+          phone, // Store phone in user_metadata
         },
       },
     });
-    if (error) throw error;
+
+    if (error) {
+      console.error("Signup error:", error);
+      throw error;
+    }
+
+    const userId = data.user?.id;
+    if (!userId) throw new Error("User ID not found after signup");
+
+    console.log("User after signup:", data.user); // Debug metadata
+    setUser(data.user ?? null);
     return data;
   };
 
@@ -70,7 +77,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    setUser(null);
   };
 
   const authValue: AuthContextType = {
@@ -82,13 +91,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={authValue as AuthContextType}>
+    <AuthContext.Provider value={authValue}>
       {!loading && children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook with type checking
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -96,5 +104,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-

@@ -16,13 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import supabase from "@/Supabase/supabase";
-import { useNavigate } from "react-router"; // Use Next.js router
+import { useNavigate } from "react-router";
 
 interface UserData {
   id: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  phone: string | null; // Added phone
   orders?: Order[];
   addresses?: Address[];
   pendingEmail?: string | null;
@@ -57,8 +58,7 @@ const Dashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState<UserData | null>(null);
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
-  const [password, setPassword] = useState("");
-  const router = useNavigate(); // Updated to useRouter
+  const router = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,20 +68,17 @@ const Dashboard: React.FC = () => {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // Fetch additional user data (e.g., from profiles table)
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("display_name, photo_url")
           .eq("id", user.id)
           .single();
 
-        // Fetch orders
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("id, date, total, status, order_items(id, name, price, quantity)")
           .eq("user_id", user.id);
 
-        // Fetch addresses
         const { data: addressesData, error: addressesError } = await supabase
           .from("addresses")
           .select("*")
@@ -89,14 +86,14 @@ const Dashboard: React.FC = () => {
 
         if (profileError) console.error("Profile fetch error:", profileError);
         if (ordersError) console.error("Orders fetch error:", ordersError);
-        if (addressesError)
-          console.error("Addresses fetch error:", addressesError);
+        if (addressesError) console.error("Addresses fetch error:", addressesError);
 
         const userData: UserData = {
           id: user.id,
           email: user.email || null,
           displayName: profileData?.display_name || user.user_metadata?.full_name || null,
           photoURL: profileData?.photo_url || user.user_metadata?.profile_image || null,
+          phone: user.user_metadata?.phone || null, // Fetch phone from user_metadata
           orders: ordersData?.map((order) => ({
             id: order.id,
             date: new Date(order.date).toISOString().split("T")[0],
@@ -117,7 +114,6 @@ const Dashboard: React.FC = () => {
 
     fetchUserData();
 
-    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "SIGNED_OUT") {
@@ -146,8 +142,7 @@ const Dashboard: React.FC = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to log out",
+        description: error instanceof Error ? error.message : "Failed to log out",
       });
     }
   };
@@ -170,7 +165,6 @@ const Dashboard: React.FC = () => {
 
       if (!currentUser) throw new Error("No authenticated user found");
 
-      // Update display name in profiles table or user metadata
       if (editedUser.displayName !== user.displayName) {
         const { error: profileError } = await supabase
           .from("profiles")
@@ -181,13 +175,11 @@ const Dashboard: React.FC = () => {
 
         if (profileError) throw profileError;
 
-        // Optionally update user metadata
         await supabase.auth.updateUser({
           data: { full_name: editedUser.displayName },
         });
       }
 
-      // Handle email update
       if (editedUser.email && editedUser.email !== user.email) {
         if (!validateEmail(editedUser.email)) {
           toast({
@@ -198,45 +190,15 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        if (!password) {
-          toast({
-            variant: "destructive",
-            title: "Password Required",
-            description: "Please enter your current password to update email",
-          });
-          return;
-        }
-
-        // Reauthenticate (Supabase doesn't require this for email updates, but we'll mimic Firebase behavior)
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password,
-        });
-
-        if (signInError) {
-          toast({
-            variant: "destructive",
-            title: "Authentication Error",
-            description: "Invalid password. Please try again.",
-          });
-          return;
-        }
-
-        // Update email (Supabase sends a verification email automatically)
         const { error: updateError } = await supabase.auth.updateUser({
           email: editedUser.email,
         });
 
         if (updateError) throw updateError;
 
-        setUser((prev) =>
-          prev ? { ...prev, pendingEmail: editedUser.email } : null
-        );
-        setEditedUser((prev) =>
-          prev ? { ...prev, pendingEmail: editedUser.email } : null
-        );
+        setUser((prev) => (prev ? { ...prev, pendingEmail: editedUser.email } : null));
+        setEditedUser((prev) => (prev ? { ...prev, pendingEmail: editedUser.email } : null));
         setEmailVerificationSent(true);
-        setPassword("");
 
         toast({
           title: "Verification Required",
@@ -255,8 +217,7 @@ const Dashboard: React.FC = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update profile",
+        description: error instanceof Error ? error.message : "Failed to update profile",
       });
     }
   };
@@ -271,7 +232,6 @@ const Dashboard: React.FC = () => {
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Sidebar */}
         <Card className="md:sticky md:top-6 h-fit rounded-none border-[#521635]">
           <CardContent className="pt-6">
             <div className="flex items-center space-x-4 mb-6">
@@ -297,7 +257,6 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content */}
         <div className="md:col-span-3">
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6 rounded-none">
@@ -324,9 +283,7 @@ const Dashboard: React.FC = () => {
             <TabsContent value="profile">
               <Card className="rounded-none border-[#521635]">
                 <CardHeader>
-                  <CardTitle className="text-[#521635]">
-                    Profile Information
-                  </CardTitle>
+                  <CardTitle className="text-[#521635]">Profile Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -355,40 +312,35 @@ const Dashboard: React.FC = () => {
                     ) : (
                       <p>{user.email}</p>
                     )}
-                    {isEditing && (
-                      <div className="space-y-2">
-                        <p className="text-sm text-[#521635]">
-                          Current Password (required for email changes)
-                        </p>
-                        <Input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="rounded-none border-[#521635] focus:ring-[#521635]"
-                        />
-                      </div>
-                    )}
-                    {user.pendingEmail && (
-                      <p className="text-sm text-[#521635]">
-                        Pending email: {user.pendingEmail} (Verification
-                        pending)
-                      </p>
-                    )}
-                    {emailVerificationSent && !isEditing && (
-                      <p className="text-sm text-[#521635]">
-                        Verification email sent to {user.pendingEmail}. Please
-                        check your inbox and verify to complete the email
-                        change.
-                      </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-[#521635]">Phone</p>
+                    {isEditing ? (
+                      <Input
+                        name="phone"
+                        value={editedUser.phone || ""}
+                        onChange={handleInputChange}
+                        className="rounded-none border-[#521635] focus:ring-[#521635]"
+                        type="tel"
+                      />
+                    ) : (
+                      <p>{user.phone || "Not set"}</p>
                     )}
                   </div>
+                  {user.pendingEmail && (
+                    <p className="text-sm text-[#521635]">
+                      Pending email: {user.pendingEmail} (Verification pending)
+                    </p>
+                  )}
+                  {emailVerificationSent && !isEditing && (
+                    <p className="text-sm text-[#521635]">
+                      Verification email sent to {user.pendingEmail}. Please check your inbox and verify to complete the email change.
+                    </p>
+                  )}
                   <Button
                     onClick={handleEditSave}
                     className="rounded-none bg-[#521635] hover:bg-[#521635]/90 text-white"
-                    disabled={
-                      isEditing &&
-                      (!editedUser.displayName || !editedUser.email)
-                    }
+                    disabled={isEditing && (!editedUser.displayName || !editedUser.email)}
                   >
                     {isEditing ? "Save" : "Edit Profile"}
                   </Button>
@@ -405,15 +357,11 @@ const Dashboard: React.FC = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-[#521635]">
-                        <TableHead className="text-[#521635]">
-                          Order ID
-                        </TableHead>
+                        <TableHead className="text-[#521635]">Order ID</TableHead>
                         <TableHead className="text-[#521635]">Date</TableHead>
                         <TableHead className="text-[#521635]">Total</TableHead>
                         <TableHead className="text-[#521635]">Status</TableHead>
-                        <TableHead className="text-[#521635] text-right">
-                          Actions
-                        </TableHead>
+                        <TableHead className="text-[#521635] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -455,9 +403,7 @@ const Dashboard: React.FC = () => {
             <TabsContent value="addresses">
               <Card className="rounded-none border-[#521635]">
                 <CardHeader>
-                  <CardTitle className="text-[#521635]">
-                    Saved Addresses
-                  </CardTitle>
+                  <CardTitle className="text-[#521635]">Saved Addresses</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {user.addresses?.map((address) => (
