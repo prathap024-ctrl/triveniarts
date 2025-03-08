@@ -14,6 +14,7 @@ import CartIconWithCount from "../others/CartIconWithCount";
 import { useAuth } from "@/Supabase/authcontext";
 import supabase from "@/Supabase/supabase";
 
+// Define the Product interface to match your products table
 interface Product {
   id: number;
   product_code: number;
@@ -59,7 +60,8 @@ export function NavbarSec() {
 
         if (error) throw error;
 
-        setSuggestions(data || []);
+        // Explicitly type the data as Product[]
+        setSuggestions(data as Product[] || []);
       } catch (error) {
         console.error("Error fetching suggestions:", error);
         toast({
