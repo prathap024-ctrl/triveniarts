@@ -1,33 +1,20 @@
 import express, { Request, Response } from "express";
 import Razorpay from "razorpay";
+import * as crypto from "crypto";
 
 const app = express();
 
-// Initialize Razorpay
 const razorpay = new Razorpay({
-  key_id: "rzp_test_your_key_id_here", // Replace with your Razorpay Key ID
-  key_secret: "your_key_secret_here", // Replace with your Razorpay Key Secret
+  key_id: "YOUR_ACTUAL_KEY_ID",
+  key_secret: "YOUR_ACTUAL_KEY_SECRET",
 });
 
-app.use(express.json());
-
-interface CreateOrderRequestBody {
-  amount: number;
-  orderId: string;
-}
-
-interface RazorpayOrder {
-  id: string;
-  amount: number;
-  currency: string;
-}
-
-app.post("/api/create-razorpay-order", async (req: Request<{}, {}, CreateOrderRequestBody>, res: Response) => {
+app.post("/api/create-razorpay-order", express.json(), async (req: Request<CreateOrderRequestBody>, res: Response) => {
   const { amount, orderId } = req.body;
 
   try {
     const options = {
-      amount, // Amount in paise
+      amount: amount * 100, // Convert to paise
       currency: "INR",
       receipt: `order_${orderId}`,
       notes: { orderId },
@@ -44,21 +31,8 @@ app.post("/api/create-razorpay-order", async (req: Request<{}, {}, CreateOrderRe
   }
 });
 
-interface RazorpayWebhookPayload {
-  event: string;
-  payload: {
-    payment: {
-      entity: {
-        notes: { orderId: string };
-      };
-    };
-  };
-}
-
-app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (req: Request<{}, {}, RazorpayWebhookPayload>, res: Response) => {
-  const crypto = require("crypto");
-  const secret = "your_webhook_secret_here"; // Replace with your Razorpay webhook secret
-
+app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (req: Request<RazorpayWebhookPayload>, res: Response) => {
+  const secret = "YOUR_WEBHOOK_SECRET";
   const signature = req.headers["x-razorpay-signature"] as string;
   const body = req.body;
 
@@ -73,7 +47,7 @@ app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (re
       const payment = body.payload.payment.entity;
       const orderId = payment.notes.orderId;
       console.log(`Payment authorized for order ${orderId}`);
-      // Update Supabase order status here (e.g., to "paid")
+      // Add your database update logic here
     }
     res.status(200).json({ status: "ok" });
   } else {
@@ -82,3 +56,25 @@ app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (re
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
+
+interface CreateOrderRequestBody {
+  amount: number;
+  orderId: string;
+}
+
+interface RazorpayOrder {
+  id: string;
+  amount: number;
+  currency: string;
+}
+
+interface RazorpayWebhookPayload {
+  event: string;
+  payload: {
+    payment: {
+      entity: {
+        notes: { orderId: string };
+      };
+    };
+  };
+}
