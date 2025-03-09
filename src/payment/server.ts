@@ -1,8 +1,9 @@
-const express = require("express");
-const Razorpay = require("razorpay");
+import express, { Request, Response } from "express";
+import Razorpay from "razorpay";
+
 const app = express();
 
-// Initialize Razorpay with your key ID and secret
+// Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: "rzp_test_your_key_id_here", // Replace with your Razorpay Key ID
   key_secret: "your_key_secret_here", // Replace with your Razorpay Key Secret
@@ -10,34 +11,55 @@ const razorpay = new Razorpay({
 
 app.use(express.json());
 
-app.post("/api/create-razorpay-order", async (req, res) => {
-  const { amount, orderId } = req.body; // Amount in paise, orderId from Supabase
+interface CreateOrderRequestBody {
+  amount: number;
+  orderId: string;
+}
+
+interface RazorpayOrder {
+  id: string;
+  amount: number;
+  currency: string;
+}
+
+app.post("/api/create-razorpay-order", async (req: Request<{}, {}, CreateOrderRequestBody>, res: Response) => {
+  const { amount, orderId } = req.body;
 
   try {
     const options = {
-      amount: amount, // Amount in paise (e.g., 50000 for ₹500)
+      amount, // Amount in paise
       currency: "INR",
-      receipt: `order_${orderId}`, // Unique receipt ID
-      notes: { orderId }, // Attach orderId for reference
+      receipt: `order_${orderId}`,
+      notes: { orderId },
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await razorpay.orders.create(options) as RazorpayOrder;
     res.json({
-      orderId: order.id, // Razorpay order ID
+      orderId: order.id,
       amount: order.amount,
       currency: order.currency,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 
-// Webhook endpoint (optional, for payment verification)
-app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (req, res) => {
+interface RazorpayWebhookPayload {
+  event: string;
+  payload: {
+    payment: {
+      entity: {
+        notes: { orderId: string };
+      };
+    };
+  };
+}
+
+app.post("/api/razorpay-webhook", express.raw({ type: "application/json" }), (req: Request<{}, {}, RazorpayWebhookPayload>, res: Response) => {
   const crypto = require("crypto");
   const secret = "your_webhook_secret_here"; // Replace with your Razorpay webhook secret
 
-  const signature = req.headers["x-razorpay-signature"];
+  const signature = req.headers["x-razorpay-signature"] as string;
   const body = req.body;
 
   const expectedSignature = crypto
