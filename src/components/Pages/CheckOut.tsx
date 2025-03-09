@@ -1,119 +1,249 @@
-// CheckOut.tsx
-import React, { useState, FormEvent } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCart } from "../cartutils/CartContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import supabase from "@/Supabase/supabase";
+import { useToast } from "@/hooks/use-toast";
+import images from "@/assets/images";
 
-
-interface FormData {
-  fullName: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
+// Razorpay type definitions
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name: string;
+  description: string;
+  image: string;
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+  prefill: { name: string; email: string; contact: string };
+  notes: { orderId: string };
+  theme: { color: string };
+  modal: { ondismiss: () => void };
 }
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+interface UserData {
+  id: string;
+  fullName: string | null;
+  address?: Address | null;
+  email?: string;
+  phone?: string;
+}
+
+interface Address {
+  id: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const CheckOut: React.FC = () => {
   const { cartItems, updateQuantity, removeItem, clearCart } = useCart();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
-  const [formData, setFormData] = useState<FormData>({
-    fullName: "",
-    address: "",
-    city: "",
-    postalCode: "",
-    country: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-  });
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error("Auth error:", authError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to authenticate. Please log in again.",
+        });
+        navigate("/login");
+        return;
+      }
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+        const { data: addressData, error: addressError } = await supabase
+          .from("addresses")
+          .select("id, street, city, state, zip")
+          .eq("user_id", user.id)
+          .limit(1)
+          .single();
+
+        if (profileError) console.error("Profile fetch error:", profileError);
+        if (addressError && addressError.code !== "PGRST116")
+          console.error("Address fetch error:", addressError);
+
+        const fetchedUserData: UserData = {
+          id: user.id,
+          fullName: profileData?.display_name || user.user_metadata?.full_name || "User",
+          address: addressData || null,
+          email: user.email || "",
+          phone: user.user_metadata?.phone || "",
+        };
+        setUserData(fetchedUserData);
+      } else {
+        navigate("/login");
+      }
+      setLoading(false);
+    };
+    fetchUserData();
+  }, [navigate, toast]);
+
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.08;
-  const shipping = subtotal > 10000 ? 0 : 100; // Updated to match ShoppingCart
+  const shipping = subtotal > 10000 ? 0 : 100;
   const total = subtotal + tax + shipping;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const validateForm = () => {
-    const cardNumberRegex = /^\d{16}$/;
-    const cvvRegex = /^\d{3}$/;
-    const expiryRegex = /^(0[1-9]|1[0-2])\/\d{2}$/;
-
-    return (
-      formData.fullName.trim() !== "" &&
-      formData.address.trim() !== "" &&
-      formData.city.trim() !== "" &&
-      formData.postalCode.trim() !== "" &&
-      formData.country.trim() !== "" &&
-      cardNumberRegex.test(formData.cardNumber) &&
-      expiryRegex.test(formData.expiryDate) &&
-      cvvRegex.test(formData.cvv)
-    );
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      alert("Please fill in all fields correctly");
+  const handleCheckout = async () => {
+    if (!userData || cartItems.length === 0 || !userData.address) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: !userData
+          ? "User data not loaded."
+          : cartItems.length === 0
+          ? "Your cart is empty."
+          : "No address found.",
+      });
+      if (!userData?.address) navigate("/dashboard");
       return;
     }
 
-    if (cartItems.length === 0) {
-      alert("Your cart is empty");
-      return;
-    }
+    setProcessingPayment(true);
 
-    // Simulate order processing
-    console.log("Order submitted:", { formData, cartItems });
-    clearCart();
-    alert("Order placed successfully!");
-    navigate("/"); // Redirect to home page after successful order
+    try {
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: userData.id,
+          date: new Date().toISOString(),
+          total,
+          status: "pending",
+          shipping_address: `${userData.address.street}, ${userData.address.city}, ${userData.address.state} ${userData.address.zip}`,
+        })
+        .select("id, order_id")
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = cartItems.map((item) => ({
+        order_id: orderData.id,
+        name: item.name || "Unknown Item",
+        price: item.price || 0,
+        quantity: item.quantity || 1,
+      }));
+
+      const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+      if (itemsError) throw itemsError;
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) throw new Error("Failed to load Razorpay script");
+
+      const response = await fetch("/api/create-razorpay-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Math.round(total * 100), orderId: orderData.id }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create Razorpay order: ${errorText}`);
+      }
+
+      const { orderId: razorpayOrderId, amount, currency } = await response.json();
+
+      const options: RazorpayOptions = {
+        key: import.meta.env.REACT_APP_RAZORPAY_KEY || "rzp_test_your_actual_key",
+        amount,
+        currency,
+        order_id: razorpayOrderId,
+        name: "Your Company Name",
+        description: `Order #${orderData.order_id}`,
+        image: images.mainlogo,
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response;
+          try {
+            const verifyResponse = await fetch("/api/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ razorpay_payment_id, razorpay_order_id, razorpay_signature }),
+            });
+
+            if (!verifyResponse.ok) throw new Error("Payment verification failed");
+
+            await supabase.from("orders").update({ status: "paid" }).eq("id", orderData.id);
+            clearCart();
+            navigate(`/order-details?orderId=${orderData.id}`);
+          } catch (error) {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Payment succeeded but verification failed. Contact support.",
+            });
+          }
+        },
+        prefill: {
+          name: userData.fullName || "",
+          email: userData.email || "",
+          contact: userData.phone || "",
+        },
+        notes: { orderId: orderData.id },
+        theme: { color: "#521635" },
+        modal: {
+          ondismiss: () => {
+            setProcessingPayment(false);
+            toast({ title: "Payment Cancelled", description: "You cancelled the payment." });
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      setProcessingPayment(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process payment.",
+      });
+    }
   };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>;
 
   return (
     <div className="abeezee-regular min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-[#521635] flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mr-2"
-          >
-            <circle cx="8" cy="21" r="1" />
-            <circle cx="19" cy="21" r="1" />
-            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-          </svg>
-          Checkout
-        </h1>
-
+        <h1 className="text-3xl font-bold mb-8 text-[#521635] flex items-center">Checkout</h1>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Cart Items and Form */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Cart Items */}
             <Card className="rounded-none border-[#521635] shadow-md">
               <CardHeader className="bg-[#521635] text-white">
                 <CardTitle>Your Items</CardTitle>
@@ -125,55 +255,27 @@ const CheckOut: React.FC = () => {
                     className="flex flex-col sm:flex-row border-b border-gray-200 py-4 last:border-b-0"
                   >
                     <div className="w-full sm:w-32 h-auto bg-gray-200">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 p-4 flex flex-col justify-between">
                       <div>
                         <h3 className="font-medium text-lg">{item.name}</h3>
-                        <p className="text-gray-600 text-sm mb-2">
-                          Product Code: {item.id}00{item.id}
-                        </p>
+                        <p className="text-gray-600 text-sm mb-2">Product Code: {item.id}00{item.id}</p>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-4 mt-2">
                         <div className="flex items-center space-x-1 border border-[#521635] rounded-none">
                           <Button
                             onClick={() => updateQuantity(item.id, -1)}
-                            className="text-[#521635] bg-transparent rounded-none hover:bg-[#521635] hover:text-white transition-colors"
+                            className="text-[#521635] bg-transparent hover:bg-[#521635] rounded-none hover:text-white"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M5 12h14" />
-                            </svg>
+                            -
                           </Button>
-                          <span className="px-2 py-1 min-w-8 text-center">
-                            {item.quantity}
-                          </span>
+                          <span className="px-2 py-1 min-w-8 text-center">{item.quantity}</span>
                           <Button
                             onClick={() => updateQuantity(item.id, 1)}
-                            className="text-[#521635] bg-transparent rounded-none hover:bg-[#521635] hover:text-white transition-colors"
+                            className="text-[#521635] bg-transparent hover:bg-[#521635] rounded-none hover:text-white"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M12 5v14M5 12h14" />
-                            </svg>
+                            +
                           </Button>
                         </div>
                         <div className="flex items-center space-x-4">
@@ -182,21 +284,9 @@ const CheckOut: React.FC = () => {
                           </p>
                           <Button
                             onClick={() => removeItem(item.id)}
-                            className="text-[#521635] bg-transparent rounded-none hover:bg-[#521635] hover:text-white transition-colors"
+                            className="text-[#521635] bg-transparent hover:bg-[#521635] rounded-none hover:text-white"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                              <line x1="10" x2="10" y1="11" y2="17" />
-                              <line x1="14" x2="14" y1="11" y2="17" />
-                            </svg>
+                            Remove
                           </Button>
                         </div>
                       </div>
@@ -205,151 +295,31 @@ const CheckOut: React.FC = () => {
                 ))}
               </CardContent>
             </Card>
-
-            {/* Shipping and Payment Form */}
             <Card className="rounded-none border-[#521635] shadow-md">
               <CardHeader className="bg-[#521635] text-white">
-                <CardTitle>Shipping & Payment</CardTitle>
+                <CardTitle>Payment</CardTitle>
               </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Shipping Information */}
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-[#521635]">
-                      Full Name
-                    </Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      required
-                      className="rounded-none border-[#521635] focus:ring-[#521635]"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address" className="text-[#521635]">
-                      Address
-                    </Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      required
-                      className="rounded-none border-[#521635] focus:ring-[#521635]"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city" className="text-[#521635]">
-                        City
-                      </Label>
-                      <Input
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none border-[#521635] focus:ring-[#521635]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="postalCode" className="text-[#521635]">
-                        Postal Code
-                      </Label>
-                      <Input
-                        id="postalCode"
-                        name="postalCode"
-                        value={formData.postalCode}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none border-[#521635] focus:ring-[#521635]"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country" className="text-[#521635]">
-                      Country
-                    </Label>
-                    <Input
-                      id="country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      required
-                      className="rounded-none border-[#521635] focus:ring-[#521635]"
-                    />
-                  </div>
-
-                  {/* Payment Information */}
-                  <div className="pt-4">
-                    <h3 className="text-lg font-semibold mb-4 text-[#521635]">
-                      Payment Information
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="cardNumber" className="text-[#521635]">
-                          Card Number
-                        </Label>
-                        <Input
-                          id="cardNumber"
-                          name="cardNumber"
-                          value={formData.cardNumber}
-                          onChange={handleInputChange}
-                          required
-                          maxLength={16}
-                          className="rounded-none border-[#521635] focus:ring-[#521635]"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="expiryDate"
-                            className="text-[#521635]"
-                          >
-                            Expiry Date
-                          </Label>
-                          <Input
-                            id="expiryDate"
-                            name="expiryDate"
-                            value={formData.expiryDate}
-                            onChange={handleInputChange}
-                            placeholder="MM/YY"
-                            required
-                            className="rounded-none border-[#521635] focus:ring-[#521635]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="cvv" className="text-[#521635]">
-                            CVV
-                          </Label>
-                          <Input
-                            id="cvv"
-                            name="cvv"
-                            value={formData.cvv}
-                            onChange={handleInputChange}
-                            required
-                            maxLength={3}
-                            className="rounded-none border-[#521635] focus:ring-[#521635]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full rounded-none bg-[#521635] hover:bg-[#3d1127] text-white py-3"
-                  >
-                    Place Order
-                  </Button>
-                </form>
+              <CardContent>
+                <h2 className="mt-6 font-semibold">
+                  Shipping to:{" "}
+                  {userData?.address ? (
+                    `${userData.address.street}, ${userData.address.city}, ${userData.address.state} ${userData.address.zip}`
+                  ) : (
+                    <span>
+                      No address set. <Link to="/dashboard" className="text-[#521635] underline">Add an address</Link>
+                    </span>
+                  )}
+                </h2>
+                <Button
+                  onClick={handleCheckout}
+                  className="w-full mt-6 rounded-none bg-[#521635] hover:underline underline-offset-4 text-white py-3"
+                  disabled={processingPayment}
+                >
+                  {processingPayment ? "Processing..." : "Pay with Razorpay"}
+                </Button>
               </CardContent>
             </Card>
           </div>
-
-          {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
             <Card className="shadow-md border-[#521635] sticky top-4 rounded-none">
               <CardHeader className="bg-[#521635] text-white">
@@ -367,9 +337,7 @@ const CheckOut: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
-                    <span>
-                      {shipping === 0 ? "Free" : `₹${shipping.toFixed(2)}`}
-                    </span>
+                    <span>{shipping === 0 ? "Free" : `₹${shipping.toFixed(2)}`}</span>
                   </div>
                   <div className="border-t border-[#521635] pt-3 mt-3"></div>
                   <div className="flex justify-between font-semibold text-lg text-[#521635]">
@@ -379,7 +347,6 @@ const CheckOut: React.FC = () => {
                 </div>
                 <div className="mt-4 text-sm text-gray-500">
                   <p>Free shipping on orders over ₹10,000</p>
-                  <p className="mt-2">Need help? Contact our support team</p>
                 </div>
               </CardContent>
             </Card>

@@ -1,0 +1,11 @@
+{
+    "httpPort": 5488,
+    "extensions": {
+      "express": {
+        "cors": {
+          "origin": "http://localhost:5173",
+          "credentials": true
+        }
+      }
+    }
+  }
