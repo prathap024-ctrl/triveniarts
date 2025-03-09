@@ -8,11 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useCart } from "../cartutils/CartContext"; // Assuming this is your cart context
-import { useToast } from "@/hooks/use-toast";
 import supabase from "@/Supabase/supabase";
 import { FaWhatsapp } from "react-icons/fa";
-import { FiShoppingCart } from "react-icons/fi";
 
 // Define product interface to match Supabase schema
 interface Product {
@@ -31,8 +28,6 @@ const ProductHighlight: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { addToCart } = useCart();
-  const { toast } = useToast();
 
   // Fetch product data from Supabase
   useEffect(() => {
@@ -69,30 +64,6 @@ const ProductHighlight: React.FC = () => {
     fetchProduct();
   }, [productId]);
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat("en-us", {
-      style: "currency",
-      currency: "INR",
-    }).format(price || 0);
-  };
-
-  const handleAddToCart = () => {
-    if (!product) return;
-
-    addToCart({
-      id: product.id,
-      name: product.product_name,
-      price: product.price,
-      image: product.image_url || "/api/placeholder/400/300",
-      quantity: 1,
-    });
-    toast({
-      title: "Added to Cart",
-      description: `${product.product_name} has been added to your cart.`,
-      duration: 3000,
-      className: "text-[#521635]",
-    });
-  };
 
   const generateWhatsAppLink = (product: Product) => {
     const phoneNumber = "+918105871804";
@@ -142,9 +113,7 @@ const ProductHighlight: React.FC = () => {
               className="text-xl font-bold"
               style={{ color: "#521635" }}
             >
-              {product.price > 10000
-                ? "Contact for Price"
-                : formatPrice(product.price)}
+              Contact for Price
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 pt-0">
@@ -170,26 +139,16 @@ const ProductHighlight: React.FC = () => {
               aria-label={`Contact via WhatsApp for ${product.product_name}`}
               onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
             >
-                <Button className="rounded-none w-full md:w-auto px-8 py-3 text-white hover:underline underline-offset-4"
-                 style={{
-                    backgroundColor: "#521635",
-                  }}
-                >
-
-              <FaWhatsapp />
-              Chat on WhatsApp
-                </Button>
-            </a><br />
-            <Button
-              className="rounded-none w-full md:w-auto px-8 py-3 text-white hover:underline underline-offset-4"
-              style={{
-                backgroundColor: "#521635",
-              }}
-              onClick={handleAddToCart}
-            >
-                <FiShoppingCart />
-              Add to Cart
-            </Button>
+              <Button
+                className="rounded-none w-full md:w-auto px-8 py-3 text-white hover:underline underline-offset-4"
+                style={{
+                  backgroundColor: "#521635",
+                }}
+              >
+                <FaWhatsapp />
+                Chat on WhatsApp
+              </Button>
+            </a>
           </CardContent>
         </Card>
       </div>

@@ -1,14 +1,10 @@
 "use strict";
 
 import { useState, useEffect } from "react";
-import { FiSearch, FiHeart, FiShoppingCart } from "react-icons/fi";
+import { FiSearch, FiHeart } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-import { useCart } from "../cartutils/CartContext";
-import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 import supabase from "@/Supabase/supabase";
-import { Button } from "../ui/button";
-
 
 interface Product {
   id: number;
@@ -28,11 +24,13 @@ const ProductCollection = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { addToCart } = useCart();
-  const { toast } = useToast();
+
   const navigate = useNavigate(); // Hook for navigation
 
-  const categories = ["All", ...new Set(products.map((product) => product.category))];
+  const categories = [
+    "All",
+    ...new Set(products.map((product) => product.category)),
+  ];
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -43,7 +41,8 @@ const ProductCollection = () => {
           .select("*")
           .order("id", { ascending: true });
 
-        if (error) throw new Error("Failed to fetch products: " + error.message);
+        if (error)
+          throw new Error("Failed to fetch products: " + error.message);
 
         setProducts(data || []);
         setFilteredProducts(data || []);
@@ -62,7 +61,9 @@ const ProductCollection = () => {
     let result = [...products];
 
     if (selectedCategory !== "All") {
-      result = result.filter((product) => product.category === selectedCategory);
+      result = result.filter(
+        (product) => product.category === selectedCategory
+      );
     }
 
     if (searchQuery) {
@@ -92,22 +93,6 @@ const ProductCollection = () => {
     const phoneNumber = "+918105871804";
     const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-  };
-
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      id: product.id,
-      name: product.product_name,
-      price: product.price,
-      image: product.image_url || "/api/placeholder/400/300",
-      quantity: 1,
-    });
-    toast({
-      title: "Added to Cart",
-      description: `${product.product_name} has been added to your cart.`,
-      duration: 3000,
-      className: "text-[#521635]",
-    });
   };
 
   // Navigate to ProductHighlight page
@@ -235,16 +220,9 @@ const ProductCollection = () => {
                     Code: {product.product_code || "N/A"}
                   </p>
                   <div className="flex justify-between items-center">
-                    {product.price > 10000 ? (
-                      <span className="text-xl font-bold">Contact for Price</span>
-                    ) : (
                       <span className="text-xl font-bold">
-                        {new Intl.NumberFormat("en-us", {
-                          style: "currency",
-                          currency: "INR",
-                        }).format(product.price || 0)}
+                        Contact for Price
                       </span>
-                    )}
                     <span
                       className={`text-sm ${
                         product.stock < 10 ? "text-red-300" : "text-green-300"
@@ -256,31 +234,18 @@ const ProductCollection = () => {
                   <p className="text-sm text-gray-300">
                     Category: {product.category || "Uncategorized"}
                   </p>
-                  {product.price > 8000 ? (
-                    <a
-                      href={generateWhatsAppLink(product)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
-                      aria-label={`Contact via WhatsApp for ${product.product_name}`}
-                      onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
-                    >
-                      <FaWhatsapp />
-                      Chat on WhatsApp
-                    </a>
-                  ) : (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent navigation on add to cart
-                        handleAddToCart(product);
-                      }}
-                      className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
-                      aria-label={`Add ${product.product_name} to cart`}
-                    >
-                      <FiShoppingCart />
-                      Add to Cart
-                    </Button>
-                  )}
+
+                  <a
+                    href={generateWhatsAppLink(product)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2 bg-white text-[#521635] font-semibold rounded-none hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                    aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                    onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
+                  >
+                    <FaWhatsapp />
+                    Chat on WhatsApp
+                  </a>
                 </div>
               </div>
             ))}

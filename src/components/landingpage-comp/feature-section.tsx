@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+
 import { Link } from "react-router-dom";
-import { useCart } from "../cartutils/CartContext";
-import { useToast } from "@/hooks/use-toast";
+
 import supabase from "@/Supabase/supabase";
-import { FiShoppingCart } from "react-icons/fi";
+
 import { FaWhatsapp } from "react-icons/fa";
 
 // Define product interface matching your Supabase schema
@@ -21,8 +20,6 @@ interface Product {
 }
 
 export function FeatureSec() {
-  const { addToCart } = useCart();
-  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,29 +55,11 @@ export function FeatureSec() {
     fetchRecentProducts();
   }, []);
 
-  // Handler for adding to cart
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      id: product.id,
-      name: product.product_name,
-      price: product.price,
-      image: product.image_url || "/api/placeholder/400/300",
-      quantity: 1,
-    });
-    toast({
-      title: "Added to Cart",
-      description: `${product.product_name} has been added to your cart.`,
-      duration: 3000,
-      className: "text-[#521635]",
-    });
-  };
-
   const generateWhatsAppLink = (product: Product) => {
     const phoneNumber = "+918105871804";
     const message = `Hi, I'm interested in ${product.product_name} (Code: ${product.product_code}). Can you provide more details including the price?`;
     return `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
   };
-
 
   return (
     <div className="abeezee-regular w-full py-12 md:py-20 lg:py-32 xl:py-40">
@@ -149,41 +128,22 @@ export function FeatureSec() {
                         className="text-xl font-bold mt-2"
                         style={{ color: "#521635" }}
                       >
-                        {product.price > 10000
-                          ? "Contact for Price"
-                          : new Intl.NumberFormat("en-us", {
-                              style: "currency",
-                              currency: "INR",
-                            }).format(product.price)}
+                        Contact for Price
                       </p>
                     </div>
                   </Link>
-                  {/* Add to Cart Button */}
-                  {product.price > 8000 ? (
-                    <a
-                      href={generateWhatsAppLink(product)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 bg-[#521635] text-white rounded-none hover:underline underline-offset-4 transition-colors flex items-center justify-center gap-2"
-                      aria-label={`Contact via WhatsApp for ${product.product_name}`}
-                      onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
-                    >
-                      <FaWhatsapp />
-                      WhatsApp
-                    </a>
-                  ) : (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent navigation on add to cart
-                        handleAddToCart(product);
-                      }}
-                      className="w-full py-2 bg-[#521635] text-white rounded-none hover:underline underline-offset-4 transition-colors flex items-center justify-center gap-2"
-                      aria-label={`Add ${product.product_name} to cart`}
-                    >
-                      <FiShoppingCart />
-                      Add to Cart
-                    </Button>
-                  )}
+
+                  <a
+                    href={generateWhatsAppLink(product)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2 bg-[#521635] text-white rounded-none hover:underline underline-offset-4 transition-colors flex items-center justify-center gap-2"
+                    aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                    onClick={(e) => e.stopPropagation()} // Prevent navigation on WhatsApp click
+                  >
+                    <FaWhatsapp />
+                    Chat on WhatsApp
+                  </a>
                 </div>
               ))}
             </div>

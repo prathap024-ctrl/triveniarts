@@ -5,13 +5,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { Menu, X, Search, User, LogOut, LogIn, UserPlus } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
 import images from "@/assets/images";
 import "../../index.css";
 import { useToast } from "@/hooks/use-toast";
-import CartIconWithCount from "../others/CartIconWithCount";
-import { useAuth } from "@/Supabase/authcontext";
 import supabase from "@/Supabase/supabase";
 
 interface Product {
@@ -34,7 +32,6 @@ export function NavbarSec() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -44,7 +41,10 @@ export function NavbarSec() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const fetchSuggestions = async (query: string, setSuggestionsFn: (products: Product[]) => void) => {
+  const fetchSuggestions = async (
+    query: string,
+    setSuggestionsFn: (products: Product[]) => void
+  ) => {
     if (!query.trim()) {
       setSuggestionsFn([]);
       return;
@@ -59,7 +59,7 @@ export function NavbarSec() {
 
       if (error) throw error;
 
-      setSuggestionsFn(data as Product[] || []);
+      setSuggestionsFn((data as Product[]) || []);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       toast({
@@ -93,24 +93,6 @@ export function NavbarSec() {
     { name: "Contact", path: "/contact" },
   ];
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({
-        title: "Success",
-        description: "Logged out successfully!",
-      });
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to log out",
-      });
-    }
-  };
-
   const handleSuggestionClick = (productId: number, isMobile = false) => {
     if (isMobile) {
       setMobileSearchQuery("");
@@ -133,7 +115,11 @@ export function NavbarSec() {
               size="icon"
               className="md:hidden text-white rounded-none"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </Button>
           </SheetTrigger>
           <SheetContent
@@ -169,7 +155,9 @@ export function NavbarSec() {
                         />
                       )}
                       <div>
-                        <p className="text-sm font-medium">{product.product_name}</p>
+                        <p className="text-sm font-medium">
+                          {product.product_name}
+                        </p>
                         <p className="text-xs text-gray-500">
                           Code: {product.product_code} |{" "}
                           {new Intl.NumberFormat("en-us", {
@@ -186,40 +174,6 @@ export function NavbarSec() {
 
             {/* Navigation and Icons */}
             <div className="mt-4 flex flex-col gap-4">
-              <div className="flex gap-2">
-                {user ? (
-                  <>
-                    <Link to="/profile">
-                      <Button variant="ghost" size="icon" className="text-white rounded-none">
-                        <User className="w-6 h-6" />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-white rounded-none"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="w-6 h-6" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login">
-                      <Button variant="ghost" size="icon" className="text-white rounded-none">
-                        <LogIn className="w-6 h-6" />
-                      </Button>
-                    </Link>
-                    <Link to="/sign-up">
-                      <Button variant="ghost" size="icon" className="text-white rounded-none">
-                        <UserPlus className="w-6 h-6" />
-                      </Button>
-                    </Link>
-                  </>
-                )}
-                <CartIconWithCount />
-              </div>
-
               {navItems.map((item) => (
                 <Link
                   key={item.name}
@@ -270,7 +224,9 @@ export function NavbarSec() {
                       />
                     )}
                     <div>
-                      <p className="text-sm font-medium">{product.product_name}</p>
+                      <p className="text-sm font-medium">
+                        {product.product_name}
+                      </p>
                       <p className="text-xs text-gray-500">
                         Code: {product.product_code} |{" "}
                         {new Intl.NumberFormat("en-us", {
@@ -286,74 +242,8 @@ export function NavbarSec() {
           </div>
         </div>
 
-        {/* Mobile Icons (outside Sheet) */}
-        <div className="flex items-center space-x-4 md:hidden">
-          {user ? (
-            <>
-              <Link to="/profile">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <User className="w-6 h-6" />
-                </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white rounded-none"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-6 h-6" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <LogIn className="w-6 h-6" />
-                </Button>
-              </Link>
-              <Link to="/sign-up">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <UserPlus className="w-6 h-6" />
-                </Button>
-              </Link>
-            </>
-          )}
-          <CartIconWithCount />
-        </div>
-
         {/* Desktop Icons */}
         <div className="hidden md:flex items-center space-x-4">
-          {user ? (
-            <>
-              <Link to="/profile">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <User className="w-6 h-6" />
-                </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white rounded-none"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-6 h-6" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <LogIn className="w-6 h-6" />
-                </Button>
-              </Link>
-              <Link to="/sign-up">
-                <Button variant="ghost" size="icon" className="text-white rounded-none">
-                  <UserPlus className="w-6 h-6" />
-                </Button>
-              </Link>
-            </>
-          )}
-          <CartIconWithCount />
           <div className="flex space-x-2">
             <Link to="https://www.facebook.com/profile.php?id=61573701290515">
               <FaFacebook className="w-6 h-6 text-white hover:text-blue-800" />
