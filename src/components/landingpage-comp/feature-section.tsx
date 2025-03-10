@@ -3,9 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import supabase from "@/Supabase/supabase";
 import { FaWhatsapp } from "react-icons/fa";
-import { ChevronLeft, ChevronRight } from "lucide-react"; // Add lucide-react for carousel arrows
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Define product interface matching your Supabase schema with image_urls as an array
 interface Product {
   id: number;
   product_name: string;
@@ -20,9 +19,8 @@ interface Product {
 export function FeatureSec() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [carouselIndices, setCarouselIndices] = useState<Record<number, number>>({}); // Track carousel index per product
+  const [carouselIndices, setCarouselIndices] = useState<Record<number, number>>({});
 
-  // Fetch the 6 most recently added products from Supabase
   useEffect(() => {
     const fetchRecentProducts = async () => {
       try {
@@ -33,8 +31,7 @@ export function FeatureSec() {
           .order("id", { ascending: false })
           .limit(6);
 
-        if (error)
-          throw new Error("Failed to fetch products: " + error.message);
+        if (error) throw new Error("Failed to fetch products: " + error.message);
 
         setProducts(
           data.map((product: Product) => ({
@@ -42,15 +39,14 @@ export function FeatureSec() {
             description: product.description || "No description available.",
           }))
         );
-        // Initialize carousel indices
-        const initialIndices = (data || []).reduce((acc, product) => {
-          acc[product.id] = 0;
-          return acc;
-        }, {} as Record<number, number>);
-        setCarouselIndices(initialIndices);
+        setCarouselIndices(
+          (data || []).reduce((acc, product) => {
+            acc[product.id] = 0;
+            return acc;
+          }, {} as Record<number, number>)
+        );
       } catch (err) {
-        const error = err as Error;
-        console.error(error.message);
+        console.error((err as Error).message);
         setProducts([]);
       } finally {
         setLoading(false);
@@ -81,32 +77,27 @@ export function FeatureSec() {
   };
 
   return (
-    <div className="abeezee-regular w-full py-8 sm:py-12 md:py-20 lg:py-32">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-6 sm:gap-8 md:gap-12 lg:gap-16">
+    <div className="abeezee-regular w-full py-6 sm:py-8">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col gap-6">
           {/* Header Section */}
-          <div className="flex gap-4 flex-col items-start">
-            <div>
-              <Badge variant="secondary">New Arrivals</Badge>
-            </div>
-            <div className="flex gap-3 flex-col">
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl tracking-tighter font-semibold text-left">
-                Recently Added Products
-              </h2>
-              <p className="text-xs sm:text-sm md:text-base lg:text-lg lg:max-w-2xl leading-relaxed tracking-tight text-muted-foreground text-left">
-                Check out our latest additions to the collection, fresh and
-                ready for you!
-              </p>
-            </div>
+          <div className="space-y-3">
+            <Badge variant="secondary">New Arrivals</Badge>
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight">
+              Recently Added Products
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md">
+              Check out our latest additions to the collection!
+            </p>
           </div>
 
-          {/* Products Grid with Spinner */}
+          {/* Products Grid */}
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="w-8 h-8 border-4 border-t-4 border-[#521635] border-solid rounded-full animate-spin"></div>
+            <div className="flex justify-center items-center h-40">
+              <div className="w-6 h-6 border-3 border-t-3 border-[#521635] rounded-full animate-spin"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 lg:gap-10">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               {products.map((product) => {
                 const currentIndex = carouselIndices[product.id] || 0;
                 const imageCount = product.image_urls?.length || 0;
@@ -114,47 +105,47 @@ export function FeatureSec() {
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-lg shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:scale-105 flex flex-col"
+                    className="bg-white rounded-md shadow-sm overflow-hidden transition-transform hover:scale-105 flex flex-col"
                   >
                     {/* Carousel Section */}
-                    <div className="relative w-full h-48 bg-gray-100">
-                      {product.image_urls && product.image_urls.length > 0 ? (
-                        <div className="relative h-full flex items-center justify-center">
+                    <div className="relative w-full h-32 bg-gray-100">
+                      {product.image_urls?.length > 0 ? (
+                        <div className="relative h-full">
                           <button
-                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-gray-200 hover:bg-gray-300 rounded-full p-1 z-10"
+                            className="absolute left-1 top-1/2 -translate-y-1/2 bg-gray-200 hover:bg-gray-300 rounded-full p-1 z-10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              e.preventDefault(); // Prevent Link navigation
+                              e.preventDefault();
                               handlePrevImage(product.id, imageCount);
                             }}
                             disabled={imageCount <= 1}
                           >
-                            <ChevronLeft className="h-4 w-4 text-gray-600" />
+                            <ChevronLeft className="h-3 w-3 text-gray-600" />
                           </button>
-                          <Link to={`/product/${product.id}`} className="w-full h-full">
+                          <Link to={`/product/${product.id}`} className="block h-full">
                             <img
                               src={product.image_urls[currentIndex]}
-                              alt={`${product.product_name} image ${currentIndex + 1}`}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              alt={`${product.product_name} ${currentIndex + 1}`}
+                              className="w-full h-full object-cover"
                             />
                           </Link>
                           <button
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gray-200 hover:bg-gray-300 rounded-full p-1 z-10"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-gray-200 hover:bg-gray-300 rounded-full p-1 z-10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              e.preventDefault(); // Prevent Link navigation
+                              e.preventDefault();
                               handleNextImage(product.id, imageCount);
                             }}
                             disabled={imageCount <= 1}
                           >
-                            <ChevronRight className="h-4 w-4 text-gray-600" />
+                            <ChevronRight className="h-3 w-3 text-gray-600" />
                           </button>
                           {imageCount > 1 && (
-                            <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
+                            <div className="absolute bottom-1 left-0 right-0 flex justify-center space-x-1">
                               {product.image_urls.map((_, index) => (
                                 <span
                                   key={index}
-                                  className={`h-2 w-2 rounded-full ${
+                                  className={`h-1 w-1 rounded-full ${
                                     index === currentIndex ? "bg-[#521635]" : "bg-gray-300"
                                   }`}
                                 />
@@ -163,32 +154,29 @@ export function FeatureSec() {
                           )}
                         </div>
                       ) : (
-                        <Link to={`/product/${product.id}`} className="w-full h-full">
+                        <Link to={`/product/${product.id}`} className="block h-full">
                           <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                            <span className="text-sm text-gray-500">No Image</span>
+                            <span className="text-xs text-gray-500">No Image</span>
                           </div>
                         </Link>
                       )}
                     </div>
 
                     {/* Product Info */}
-                    <div className="p-4 flex-1 flex flex-col justify-between">
-                      <Link to={`/product/${product.id}`} className="flex flex-col flex-1">
-                        <h3 className="text-lg font-semibold text-gray-800 truncate hover:text-[#521635] transition-colors">
+                    <div className="p-3 flex flex-col flex-1">
+                      <Link to={`/product/${product.id}`} className="flex-1">
+                        <h3 className="text-sm font-semibold text-gray-800 truncate hover:text-[#521635]">
                           {product.product_name}
                         </h3>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1">
                           Code: {product.product_code || "N/A"}
                         </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Category: {product.category || "Uncategorized"}
-                        </p>
                         <div className="flex justify-between items-center mt-2">
-                          <span className="text-lg font-bold text-[#521635]">
+                          <span className="text-sm font-bold text-[#521635]">
                             Contact for Price
                           </span>
                           <span
-                            className={`text-sm ${
+                            className={`text-xs ${
                               product.stock < 10 ? "text-red-600" : "text-green-600"
                             }`}
                           >
@@ -200,12 +188,11 @@ export function FeatureSec() {
                         href={generateWhatsAppLink(product)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 w-full py-2 bg-[#521635] text-white font-semibold rounded-none hover:bg-[#6a2542] transition-colors flex items-center justify-center gap-2 text-sm"
-                        aria-label={`Contact via WhatsApp for ${product.product_name}`}
+                        className="mt-2 w-full py-1.5 bg-[#521635] text-white text-xs font-medium rounded-sm hover:bg-[#6a2542] flex items-center justify-center gap-1"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <FaWhatsapp className="text-base" />
-                        Chat on WhatsApp
+                        <FaWhatsapp className="text-sm" />
+                        Chat
                       </a>
                     </div>
                   </div>
